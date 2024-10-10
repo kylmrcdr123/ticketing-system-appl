@@ -1,6 +1,5 @@
 package com.rocs.ticketing.system.utils.security.configuration;
 
-
 import com.rocs.ticketing.system.utils.security.constant.SecurityConstant;
 import com.rocs.ticketing.system.utils.security.jwt.filter.authentication.access.denied.JwtAccessDeniedHandler;
 import com.rocs.ticketing.system.utils.security.jwt.filter.authentication.forbidden.AuthenticationEntryPoint;

@@ -127,45 +127,57 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return user;
     }
 
-    private void handleStudentRegistration(User newUser, User user, String otp) throws PersonExistsException, MessagingException {
-        String studentNumber = newUser.getStudent().getStudentNumber();
+    private void handleStudentRegistration(User newUser, User user, String otp) throws MessagingException {
+        String staffNumber = newUser.getStudent().getStudentNumber();
         String email = newUser.getStudent().getEmail();
-        boolean isStudentExists = studentRepository.existsByStudentNumberAndEmail(studentNumber, email);
-        boolean isUserIdExists = userRepository.existsByUserId(studentNumber);
 
-        if (!isStudentExists) {
-            throw new PersonExistsException("Student Number Does Not Exist!!");
-        } else if (isUserIdExists) {
-            throw new PersonExistsException("Student Already Exists!");
+        // Check if email already exists in MIS staff (for duplicate registration prevention)
+        boolean isUserIdExists = userRepository.existsByUserId(staffNumber);
+        if (isUserIdExists) {
+            throw new PersonExistsException("Studnt Already Exists!");
         }
 
+        // Save MIS Staff details in the MisStaff table
+        Students students = newUser.getStudent(); // Assuming this holds MIS Staff details
+        studentRepository.save(students);  // Explicitly saving to the misStaff table
+
+        // Send email with OTP
         emailService.sendNewPasswordEmail(email, otp);
-        user.setUserId(studentNumber);
+
+        // Now set the relevant details in the user entity for login
+        user.setUserId(staffNumber);
         user.setOtp(otp);
         user.setLocked(true);
         user.setRole(ROLE_STUDENT.name());
         user.setAuthorities(Arrays.stream(ROLE_STUDENT.getAuthorities()).toList());
     }
 
-    private void handleEmployeeRegistration(User newUser, User user, String otp) throws PersonExistsException, MessagingException {
+
+    private void handleEmployeeRegistration(User newUser, User user, String otp) throws MessagingException {
         String employeeNumber = newUser.getEmployee().getEmployeeNumber();
         String email = newUser.getEmployee().getEmail();
-        boolean isEmployeeExists = employeeRepository.existsByEmployeeNumberAndEmail(employeeNumber, email);
-        boolean isUserIdExists = userRepository.existsByUserId(employeeNumber);
 
-        if (!isEmployeeExists) {
-            throw new PersonExistsException("Employee Number Does Not Exist!!");
-        } else if (isUserIdExists) {
-            throw new PersonExistsException("Employee Already Exists!");
+        // Check if email already exists in MIS staff (for duplicate registration prevention)
+        boolean isUserIdExists = userRepository.existsByUserId(employeeNumber);
+        if (isUserIdExists) {
+            throw new PersonExistsException("employee Already Exists!");
         }
 
+        // Save MIS Staff details in the MisStaff table
+        Employees employees = newUser.getEmployee(); // Assuming this holds MIS Staff details
+        employeeRepository.save(employees);  // Explicitly saving to the misStaff table
+
+        // Send email with OTP
         emailService.sendNewPasswordEmail(email, otp);
+
+        // Now set the relevant details in the user entity for login
         user.setUserId(employeeNumber);
         user.setOtp(otp);
         user.setLocked(true);
         user.setRole(ROLE_EMPLOYEE.name());
         user.setAuthorities(Arrays.stream(ROLE_EMPLOYEE.getAuthorities()).toList());
     }
+
 
     private void handleMisStaffRegistration(User newUser, User user, String otp) throws MessagingException {
         String misStaffNumber = newUser.getMisStaff().getMisStaffNumber();
