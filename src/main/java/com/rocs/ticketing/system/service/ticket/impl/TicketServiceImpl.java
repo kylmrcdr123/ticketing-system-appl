@@ -74,32 +74,31 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Ticket addTicket(Ticket ticket) {
-        // Ensure the MIS Staff exists and is set
-        MisStaff misStaff = misStaffRepository.findById(ticket.getMisStaff().getId())
-                .orElseThrow(() -> new RuntimeException("MIS Staff not found with ID: " + ticket.getMisStaff().getId()));
-
-        ticket.setMisStaff(misStaff);  // Set the fetched MisStaff in the Ticket
-
-        // Check if either employee or student is provided
-        if (ticket.getEmployee() != null) {
-            Employees employee = employeeRepository.findById(ticket.getEmployee().getId())
-                    .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + ticket.getEmployee().getId()));
-            ticket.setEmployee(employee);  // Set the fetched Employee in the Ticket
-        } else if (ticket.getStudent() != null) {
-            Students student = studentRepository.findById(ticket.getStudent().getId())
-                    .orElseThrow(() -> new RuntimeException("Student not found with ID: " + ticket.getStudent().getId()));
-            ticket.setStudent(student);  // Set the fetched Student in the Ticket
+        // Require either Employee or Student to be set
+        if (ticket.getEmployees() != null) {
+            Employees employee = employeeRepository.findById(ticket.getEmployees().getId())
+                    .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + ticket.getEmployees().getId()));
+            ticket.setEmployees(employee);
+            ticket.setReporter("Employee");
+        } else if (ticket.getStudents() != null) {
+            Students student = studentRepository.findById(ticket.getStudents().getId())
+                    .orElseThrow(() -> new RuntimeException("Student not found with ID: " + ticket.getStudents().getId()));
+            ticket.setStudents(student);
+            ticket.setReporter("Student");
         } else {
             throw new RuntimeException("Either Employee or Student must be provided.");
         }
 
-        return ticketRepository.save(ticket);  // Save the ticket
+        // Allow MisStaff to be null when creating a ticket
+        ticket.setMisStaff(null);
+
+        return ticketRepository.save(ticket);
     }
 
 
     @Override
     public Ticket updateTicket(Ticket ticket) {
-        Optional<Ticket> existingTicketOptional = ticketRepository.findById(ticket.getTicketId());
+        Optional<Ticket> existingTicketOptional = ticketRepository.findById(ticket.getId());
 
         if (existingTicketOptional.isPresent()) {
             Ticket existingTicket = existingTicketOptional.get();
@@ -108,12 +107,12 @@ public class TicketServiceImpl implements TicketService {
             System.out.println("Incoming Ticket: " + ticket);
 
             // If misStaff is present, find and set the MisStaff object
-            if (ticket.getMisStaff() != null && ticket.getMisStaff().getStaffId() != null) {
-                Optional<MisStaff> misStaffOptional = misStaffRepository.findById(ticket.getMisStaff().getStaffId());
+            if (ticket.getMisStaff() != null && ticket.getMisStaff().getId() != null) {
+                Optional<MisStaff> misStaffOptional = misStaffRepository.findById(ticket.getMisStaff().getId());
                 if (misStaffOptional.isPresent()) {
                     existingTicket.setMisStaff(misStaffOptional.get());
                 } else {
-                    throw new RuntimeException("MisStaff with ID " + ticket.getMisStaff().getStaffId() + " not found");
+                    throw new RuntimeException("MisStaff with ID " + ticket.getMisStaff().getId() + " not found");
                 }
             }
 
@@ -126,7 +125,7 @@ public class TicketServiceImpl implements TicketService {
             // Save the existing ticket with the updated misStaff
             return ticketRepository.save(existingTicket);
         } else {
-            throw new RuntimeException("Ticket with ID " + ticket.getTicketId() + " not found");
+            throw new RuntimeException("Ticket with ID " + ticket.getId() + " not found");
         }
     }
 
@@ -139,14 +138,14 @@ public class TicketServiceImpl implements TicketService {
         if (employeeId != null) {
             Employees employee = employeeRepository.findById(employeeId)
                     .orElseThrow(() -> new RuntimeException("Employee not found with id " + employeeId));
-            ticket.setEmployee(employee);
-            ticket.setStudent(null); // Clear other assignments
+            ticket.setEmployees(employee);
+            ticket.setStudents(null); // Clear other assignments
             ticket.setMisStaff(null); // Clear other assignments
         } else if (studentId != null) {
             Students student = studentRepository.findById(studentId)
                     .orElseThrow(() -> new RuntimeException("Student not found with id " + studentId));
-            ticket.setStudent(student);
-            ticket.setEmployee(null); // Clear other assignments
+            ticket.setStudents(student);
+            ticket.setEmployees(null); // Clear other assignments
             ticket.setMisStaff(null); // Clear other assignments
         }
 
@@ -163,20 +162,18 @@ public class TicketServiceImpl implements TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found with id " + ticketId));
 
-        MisStaff misStaff = misStaffRepository.findById(newMisStaffId)
-                .orElseThrow(() -> new RuntimeException("MIS Staff not found with id " + newMisStaffId));
+        if (newMisStaffId != null) {
+            MisStaff misStaff = misStaffRepository.findById(newMisStaffId)
+                    .orElseThrow(() -> new RuntimeException("MIS Staff not found with id " + newMisStaffId));
+            ticket.setMisStaff(misStaff);
+        } else {
+            // Allow MisStaff to be null, while Employee or Student remains set
+            ticket.setMisStaff(null);
+        }
 
-        // Clear other assignments
-        ticket.setMisStaff(misStaff);
-        ticket.setEmployee(null);  // Clear employee if present
-        ticket.setStudent(null);   // Clear student if present
-
-        // Log the reassignment
-        System.out.println("Ticket reassigned to MIS Staff " + newMisStaffId);
-
-        // Save the updated ticket
         ticketRepository.save(ticket);
     }
+
 
     @Override
     public List<Ticket> getTicketByStatus(String status) {
@@ -194,6 +191,7 @@ public class TicketServiceImpl implements TicketService {
         return ticketRepository.findByMisStaff_MisStaffNumber(misStaffNumber);
     }
 
+
     public boolean assignTicket(Long ticketId, Long misStaffId) {
         Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
         Optional<MisStaff> staffOpt = misStaffRepository.findById(misStaffId);
@@ -208,15 +206,20 @@ public class TicketServiceImpl implements TicketService {
         return false;  // Either ticket or MIS staff not found
     }
 
-    @Override
-    public List<Ticket> getAllTicketByStaffId(Long staffId) {
-        return ticketRepository.findByMisStaff_StaffId(staffId);
-    }
 
     @Override
     public List<Ticket> getAllTicketsByMisStaffName(String name) {
         return ticketRepository.findByMisStaffFirstNameContainingIgnoreCaseOrMisStaffMiddleNameContainingIgnoreCaseOrMisStaffLastNameContainingIgnoreCase(name, name, name);
     }
 
+    // TicketServiceImpl.java
+    @Override
+    public List<Ticket> getTicketsByEmployeeNumber(String employeeNumber) {
+        return ticketRepository.findByEmployees_EmployeeNumber(employeeNumber);
+    }
 
+    @Override
+    public List<Ticket> getTicketsByStudentNumber(String studentNumber)  {
+        return ticketRepository.findByStudents_StudentNumber(studentNumber);
+    }
 }

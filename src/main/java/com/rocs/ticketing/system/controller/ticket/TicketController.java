@@ -1,26 +1,37 @@
 package com.rocs.ticketing.system.controller.ticket;
 
+import com.rocs.ticketing.system.domain.employees.Employees;
+import com.rocs.ticketing.system.domain.student.Students;
 import com.rocs.ticketing.system.domain.ticket.Ticket;
+import com.rocs.ticketing.system.service.employee.EmployeeService;
+import com.rocs.ticketing.system.service.student.StudentService;
 import com.rocs.ticketing.system.service.ticket.TicketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/TicketService")
 public class TicketController {
 
     private final TicketService ticketService;
+    private final StudentService studentService;
+    private final EmployeeService employeeService;
 
     @Autowired
-    public TicketController(TicketService ticketService) {
+    public TicketController(TicketService ticketService, StudentService studentService, EmployeeService employeeService) {
         this.ticketService = ticketService;
+        this.studentService = studentService;
+        this.employeeService = employeeService;
     }
 
     @GetMapping("/tickets")
@@ -28,7 +39,6 @@ public class TicketController {
         List<Ticket> tickets = ticketService.getAllTickets();
         return new ResponseEntity<>(tickets, HttpStatus.OK);
     }
-
 
     @GetMapping("/ticket/{id}")
     public ResponseEntity<Ticket> getTicketById(@PathVariable Long id) {
@@ -40,14 +50,23 @@ public class TicketController {
     @PostMapping("/ticket/add")
     public ResponseEntity<String> addTicket(@RequestBody Ticket ticket) {
         try {
-            if (ticket.getMisStaff() == null) {
-                return new ResponseEntity<>("MIS Staff is required", HttpStatus.BAD_REQUEST);
+            // If student is provided, check for existence and set
+            if (ticket.getStudents() != null) {
+                Students student = studentService.getStudentByNumber(ticket.getStudents().getStudentNumber());
+                if (student == null) {
+                    return new ResponseEntity<>("Student not found with student number: " + ticket.getStudents().getStudentNumber(), HttpStatus.NOT_FOUND);
+                }
+                ticket.setStudents(student); // Set the student on the ticket
             }
 
-            if (ticket.getEmployee() == null && ticket.getStudent() == null) {
-                return new ResponseEntity<>("Either Employee or Student must be provided", HttpStatus.BAD_REQUEST);
+            // If employee is provided, check for existence and set
+            if (ticket.getEmployees() != null) {
+                Employees employee = employeeService.findByEmployeeNumberOptional(ticket.getEmployees().getEmployeeNumber())
+                        .orElseThrow(() -> new RuntimeException("Employee not found with employee number: " + ticket.getEmployees().getEmployeeNumber()));
+                ticket.setEmployees(employee); // Set the employee on the ticket
             }
 
+            // No need to handle MIS staff; just add the ticket
             ticketService.addTicket(ticket);
             return new ResponseEntity<>("Ticket successfully added", HttpStatus.CREATED);
         } catch (Exception e) {
@@ -72,18 +91,14 @@ public class TicketController {
         }
     }
 
-
-    @PutMapping("/ticket/update/{ticketId}")
-    public ResponseEntity<String> updateTicket(@PathVariable Long ticketId, @RequestBody Ticket ticketDetails) {
+    @PutMapping("/ticket/update/{id}")
+    public ResponseEntity<String> updateTicket(@PathVariable Long id, @RequestBody Ticket ticketDetails) {
         try {
-            ticketDetails.setTicketId(ticketId);
+            ticketDetails.setId(id);
             Ticket updatedTicket = ticketService.updateTicket(ticketDetails);
-
-            if (updatedTicket != null) {
-                return new ResponseEntity<>("Ticket successfully updated", HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>("Ticket not found", HttpStatus.NOT_FOUND);
-            }
+            return updatedTicket != null
+                    ? new ResponseEntity<>("Ticket successfully updated", HttpStatus.OK)
+                    : new ResponseEntity<>("Ticket not found", HttpStatus.NOT_FOUND);
         } catch (Exception e) {
             return new ResponseEntity<>("Update failed: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -93,9 +108,7 @@ public class TicketController {
     @GetMapping("/status/{status}")
     public ResponseEntity<?> getTicketsByStatus(@PathVariable String status) {
         try {
-            // Normalize the status input to match the stored status format
             String normalizedStatus = status.trim().toLowerCase();
-
             List<Ticket> tickets = ticketService.getTicketByStatus(normalizedStatus);
             return new ResponseEntity<>(tickets, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
@@ -144,10 +157,37 @@ public class TicketController {
             return new ResponseEntity<>("Failed to assign ticket: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    @GetMapping("/ticket/misStaff/name/{name}")
-    public ResponseEntity<List<Ticket>> getAllTicketsByMisStaffName(@PathVariable String name) {
-        return new ResponseEntity<>(ticketService.getAllTicketsByMisStaffName(name), HttpStatus.OK);
+
+    @GetMapping("/tickets/user/{userId}")
+    public ResponseEntity<List<Ticket>> getTicketsForUser(@PathVariable String userId) {
+        List<Ticket> tickets;
+
+        if (userId.startsWith("ct")) {
+            tickets = ticketService.getTicketsByStudentNumber(userId);
+        } else if (userId.startsWith("em")) {
+            tickets = ticketService.getTicketsByEmployeeNumber(userId);
+        } else {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        if (tickets.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+
+        return new ResponseEntity<>(tickets, HttpStatus.OK);
     }
 
+    private String getUserTypeFromToken(Authentication authentication) {
+        if (authentication == null) return null;
 
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            String role = authority.getAuthority();
+            if (role.endsWith("STUDENT")) {
+                return "student";
+            } else if (role.endsWith("EMPLOYEE")) {
+                return "employee";
+            }
+        }
+        return "unknown"; // Return a recognizable string if no role matched
+    }
 }

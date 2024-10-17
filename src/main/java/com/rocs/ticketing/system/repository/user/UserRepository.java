@@ -14,10 +14,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * Checks if a user exists with the user ID.
      *
-     * @param userId the user ID
+     * @param Id the user ID
      * @return user with ID
      */
-    boolean existsByUserId(String userId);
+    boolean existsById(long Id);
     /**
      * Checks if a user exists with username.
      *
@@ -25,4 +25,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return user with username
      */
     boolean existsUserByUsername(String username);
-    boolean existsByUsername(String username);}
+    boolean existsByUsername(String username);
+}

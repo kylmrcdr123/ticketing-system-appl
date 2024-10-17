@@ -19,22 +19,12 @@ public class User implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(nullable = false, updatable = false)
     private Long id;
-    private String userId;
     private String username;
     private String password;
     private Date lastLoginDate;
     private Date joinDate;
     private String role;
     private String otp;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private Students student;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private Employees employee;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private MisStaff misStaff;
 
     @Column(name = "authorities", nullable = false)
     @Convert(converter = StringListConverter.class)

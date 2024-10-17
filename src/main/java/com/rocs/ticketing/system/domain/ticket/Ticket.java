@@ -14,7 +14,7 @@ import java.util.Date;
 public class Ticket implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long ticketId;
+    private Long Id;
 
     @Column(length = 32)
     private String ticketNumber;
@@ -27,15 +27,12 @@ public class Ticket implements Serializable {
     private String reporter;
 
     @ManyToOne
-    @JoinColumn(name = "mis_staff_id")
     private MisStaff misStaff;
 
     @ManyToOne
-    @JoinColumn(name = "employee_id", nullable = true) // Set nullable to true to handle cases where the reporter is a student
-    private Employees employee;
+    private Students students;
 
     @ManyToOne
-    @JoinColumn(name = "student_id", nullable = true)  // Same logic as above
-    private Students student;
+    private Employees employees;
 
 }

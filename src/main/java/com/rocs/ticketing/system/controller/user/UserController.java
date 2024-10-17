@@ -1,5 +1,6 @@
 package com.rocs.ticketing.system.controller.user;
 
+import com.rocs.ticketing.system.domain.register.Register;
 import com.rocs.ticketing.system.domain.user.User;
 import com.rocs.ticketing.system.domain.user.principal.UserPrincipal;
 import com.rocs.ticketing.system.exception.domain.*;
@@ -42,14 +43,14 @@ public class UserController {
     /**
      * Registers a new user.
      *
-     * @param user user to register
+     * @param register user to register
      * @return the newly registered user
      */
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user)
-            throws UsernameNotFoundException, UsernameExistsException, EmailExistsException, MessagingException, PersonExistsException, UserNotFoundException {
-        User newUser = this.userService.register(user);
-        return new ResponseEntity<>(newUser, HttpStatus.OK);
+    public ResponseEntity<User> register(@RequestBody Register register)
+            throws org.springframework.security.core.userdetails.UsernameNotFoundException, UsernameExistsException, EmailExistsException, MessagingException, PersonExistsException, UserNotFoundException {
+        Register registered = this.userService.register(register);
+        return new ResponseEntity<>(registered.getUser(), HttpStatus.OK);
     }
     /**
      * Initiates a password reset process.
@@ -58,10 +59,16 @@ public class UserController {
      * @return user with reset instructions
      */
     @PostMapping("/forgot-password")
-    public ResponseEntity<User> forgotPassword(@RequestBody User user)
-            throws UsernameNotFoundException, UsernameExistsException, EmailExistsException, MessagingException, PersonExistsException, UserNotFoundException {
-        User newUser = this.userService.forgotPassword(user);
-        return new ResponseEntity<>(newUser, HttpStatus.OK);
+    public ResponseEntity<String> forgotPassword(@RequestBody User user)
+            throws org.springframework.security.core.userdetails.UsernameNotFoundException, MessagingException {
+        try {
+            userService.forgotPassword(user);
+            return new ResponseEntity<>("An OTP has been sent to your registered email address.", HttpStatus.OK);
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            return new ResponseEntity<>("Username not found", HttpStatus.NOT_FOUND);
+        } catch (MessagingException e) {
+            return new ResponseEntity<>("Failed to send OTP email", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     /**
      * Verifies OTP for password reset.
@@ -71,7 +78,7 @@ public class UserController {
      */
     @PostMapping("/verify-forgot-password")
     public ResponseEntity<User> verifyForgotPassword(@RequestBody User user)
-            throws UsernameNotFoundException, PersonExistsException, OtpExistsException {
+            throws org.springframework.security.core.userdetails.UsernameNotFoundException, PersonExistsException, OtpExistsException {
         User newUser = this.userService.verifyOtpForgotPassword(user);
         return new ResponseEntity<>(newUser, HttpStatus.OK);
     }
@@ -103,13 +110,18 @@ public class UserController {
      * @return the logged-in user with JWT in headers
      */
     @PostMapping("/login")
-    public ResponseEntity<User> login(@RequestBody User user) throws UsernameNotFoundException{
+    public ResponseEntity<User> login(@RequestBody User user) throws UsernameNotFoundException {
         authenticate(user.getUsername(), user.getPassword());
         User loginUser = userService.findUserByUsername(user.getUsername());
         UserPrincipal userPrincipal = new UserPrincipal(loginUser);
-        HttpHeaders jwtHeaders = getJwtHeader(userPrincipal);
+
+        String token = jwtTokenProvider.generateJwtToken(userPrincipal);
+        HttpHeaders jwtHeaders = new HttpHeaders();
+        jwtHeaders.add("Authorization", "Bearer " + token); // Make sure "Authorization" is used here
+
         return new ResponseEntity<>(loginUser, jwtHeaders, HttpStatus.OK);
     }
+
     /**
      * Retrieves the list of all users.
      *
