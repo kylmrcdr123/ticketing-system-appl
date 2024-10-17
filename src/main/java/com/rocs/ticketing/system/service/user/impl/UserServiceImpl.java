@@ -2,6 +2,7 @@ package com.rocs.ticketing.system.service.user.impl;
 
 import com.rocs.ticketing.system.domain.employees.Employees;
 import com.rocs.ticketing.system.domain.misStaff.MisStaff;
+import com.rocs.ticketing.system.domain.register.Register;
 import com.rocs.ticketing.system.domain.student.Students;
 import com.rocs.ticketing.system.domain.user.User;
 import com.rocs.ticketing.system.domain.user.principal.UserPrincipal;
@@ -24,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -97,109 +97,93 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User register(User newUser) throws UsernameNotFoundException, UsernameExistsException, MessagingException, PersonExistsException, UserNotFoundException {
-        validateNewUsername(newUser.getUsername());  // Check if username already exists
-        validatePassword(newUser.getPassword());     // Validate password strength
+    public Register register(Register register) throws UsernameNotFoundException, UsernameExistsException, MessagingException, PersonExistsException, UserNotFoundException {
+        validateNewUsername(register.getUser().getUsername());  // Check if username already exists
+        validatePassword(register.getUser().getPassword());     // Validate password strength
         String otp = generateOTP();  // Generate a One Time Password (OTP)
         User user = new User();
-        user.setUsername(newUser.getUsername());
-        user.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        user.setUsername(register.getUser().getUsername());
+        user.setPassword(passwordEncoder.encode(register.getUser().getPassword()));
         user.setJoinDate(new Date());
         user.setActive(true);
+        user.setLocked(false);  // User should not be locked immediately upon registration
 
         // Student Registration
-        if (newUser.getStudent() != null && newUser.getStudent().getStudentNumber() != null) {
-            handleStudentRegistration(newUser, user, otp);
+        if (register.getStudents() != null && register.getStudents().getStudentNumber() != null) {
+            handleStudentRegistration(register, user, otp);
         }
         // Employee Registration
-        else if (newUser.getEmployee() != null && newUser.getEmployee().getEmployeeNumber() != null) {
-            handleEmployeeRegistration(newUser, user, otp);
+        else if (register.getEmployees() != null && register.getEmployees().getEmployeeNumber() != null) {
+            handleEmployeeRegistration(register, user, otp);
         }
         // MIS Staff Registration
-        else if (newUser.getMisStaff() != null && newUser.getMisStaff().getMisStaffNumber() != null) {
-            handleMisStaffRegistration(newUser, user, otp);
+        else if (register.getMisStaff() != null && register.getMisStaff().getMisStaffNumber() != null) {
+            handleMisStaffRegistration(register, user, otp);
         } else {
             throw new PersonExistsException("Invalid data. Ensure all necessary fields are filled.");
         }
 
         userRepository.save(user);  // Save the new user to the repository
         LOGGER.info("User registered successfully!");
-        return user;
+        return register;
     }
 
-    private void handleStudentRegistration(User newUser, User user, String otp) throws MessagingException {
-        String staffNumber = newUser.getStudent().getStudentNumber();
-        String email = newUser.getStudent().getEmail();
+    private void handleStudentRegistration(Register register, User user, String otp) throws MessagingException {
+        String studentNumber = register.getStudents().getStudentNumber();
+        String email = register.getStudents().getEmail();
 
-        // Check if email already exists in MIS staff (for duplicate registration prevention)
-        boolean isUserIdExists = userRepository.existsByUserId(staffNumber);
-        if (isUserIdExists) {
-            throw new PersonExistsException("Studnt Already Exists!");
+        // Check if a student with the same student number already exists
+        if (studentRepository.existsByStudentNumber(studentNumber)) {
+            throw new PersonExistsException("Student Already Exists!");
         }
 
-        // Save MIS Staff details in the MisStaff table
-        Students students = newUser.getStudent(); // Assuming this holds MIS Staff details
-        studentRepository.save(students);  // Explicitly saving to the misStaff table
+        Students student = register.getStudents();
+        student.setUser(user);  // Link the student to the user
+        studentRepository.save(student);
 
-        // Send email with OTP
         emailService.sendNewPasswordEmail(email, otp);
 
-        // Now set the relevant details in the user entity for login
-        user.setUserId(staffNumber);
         user.setOtp(otp);
-        user.setLocked(true);
         user.setRole(ROLE_STUDENT.name());
         user.setAuthorities(Arrays.stream(ROLE_STUDENT.getAuthorities()).toList());
     }
 
+    private void handleEmployeeRegistration(Register register, User user, String otp) throws MessagingException {
+        String employeeNumber = register.getEmployees().getEmployeeNumber();
+        String email = register.getEmployees().getEmail();
 
-    private void handleEmployeeRegistration(User newUser, User user, String otp) throws MessagingException {
-        String employeeNumber = newUser.getEmployee().getEmployeeNumber();
-        String email = newUser.getEmployee().getEmail();
-
-        // Check if email already exists in MIS staff (for duplicate registration prevention)
-        boolean isUserIdExists = userRepository.existsByUserId(employeeNumber);
-        if (isUserIdExists) {
-            throw new PersonExistsException("employee Already Exists!");
+        // Check if an employee with the same employee number already exists
+        if (employeeRepository.existsByEmployeeNumber(employeeNumber)) {
+            throw new PersonExistsException("Employee Already Exists!");
         }
 
-        // Save MIS Staff details in the MisStaff table
-        Employees employees = newUser.getEmployee(); // Assuming this holds MIS Staff details
-        employeeRepository.save(employees);  // Explicitly saving to the misStaff table
+        Employees employee = register.getEmployees();
+        employee.setUser(user);  // Link the employee to the user
+        employeeRepository.save(employee);
 
-        // Send email with OTP
         emailService.sendNewPasswordEmail(email, otp);
 
-        // Now set the relevant details in the user entity for login
-        user.setUserId(employeeNumber);
         user.setOtp(otp);
-        user.setLocked(true);
         user.setRole(ROLE_EMPLOYEE.name());
         user.setAuthorities(Arrays.stream(ROLE_EMPLOYEE.getAuthorities()).toList());
     }
 
+    private void handleMisStaffRegistration(Register register, User user, String otp) throws MessagingException {
+        String misStaffNumber = register.getMisStaff().getMisStaffNumber();
+        String email = register.getMisStaff().getEmail();
 
-    private void handleMisStaffRegistration(User newUser, User user, String otp) throws MessagingException {
-        String misStaffNumber = newUser.getMisStaff().getMisStaffNumber();
-        String email = newUser.getMisStaff().getEmail();
-
-        // Check if email already exists in MIS staff (for duplicate registration prevention)
-        boolean isUserIdExists = userRepository.existsByUserId(misStaffNumber);
-        if (isUserIdExists) {
+        // Check if MIS Staff with the same MIS Staff number already exists
+        if (misStaffRepository.existsByMisStaffNumber(misStaffNumber)) {
             throw new PersonExistsException("MIS Staff Already Exists!");
         }
 
-        // Save MIS Staff details in the MisStaff table
-        MisStaff misStaff = newUser.getMisStaff(); // Assuming this holds MIS Staff details
-        misStaffRepository.save(misStaff);  // Explicitly saving to the misStaff table
+        MisStaff misStaff = register.getMisStaff();
+        misStaff.setUser(user);  // Link the MIS Staff to the user
+        misStaffRepository.save(misStaff);
 
-        // Send email with OTP
         emailService.sendNewPasswordEmail(email, otp);
 
-        // Now set the relevant details in the user entity for login
-        user.setUserId(misStaffNumber);
         user.setOtp(otp);
-        user.setLocked(true);
         user.setRole(ROLE_MISSTAFF.name());
         user.setAuthorities(Arrays.stream(ROLE_MISSTAFF.getAuthorities()).toList());
     }
@@ -208,29 +192,31 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public User forgotPassword(User newUser) throws UsernameNotFoundException, MessagingException {
         String username = newUser.getUsername();
-        boolean isUsernameExist = userRepository.existsUserByUsername(username);
-        if(isUsernameExist){
-            User user = userRepository.findUserByUsername(username);
-            String otp = generateOTP();
-            user.setOtp(otp);
-            String userNumber = user.getUserId();
-            Students studentNumber = studentRepository.findByStudentNumber(userNumber);
-            Employees employeeNumber = employeeRepository.findByEmployeeNumber(userNumber);
-            MisStaff staffNumber = misStaffRepository.findByMisStaffNumber(userNumber);
-            if(studentNumber != null){
-                emailService.sendNewPasswordEmail(studentNumber.getEmail(),otp);
-            } else if(employeeNumber != null){
-                emailService.sendNewPasswordEmail(employeeNumber.getEmail(),otp);
-            } else if (staffNumber != null) {
-            emailService.sendNewPasswordEmail(staffNumber.getEmail(), otp);
-        }
-            userRepository.save(user);
-            LOGGER.info("Username Found!");
-        } else {
+        User user = userRepository.findUserByUsername(username);
+        if (user == null) {
             throw new UsernameNotFoundException("Username Not Found!");
         }
-        return newUser;
+
+        String otp = generateOTP();
+        user.setOtp(otp);
+
+        Students studentAccount = studentRepository.findByUser_Id(user.getId());
+        Employees employeeAccount = employeeRepository.findByUser_Id(user.getId());
+        MisStaff misStaffAccount = misStaffRepository.findByUser_Id(user.getId());
+
+        if(studentAccount != null && studentAccount.getEmail() != null) {
+            emailService.sendNewPasswordEmail(studentAccount.getEmail(), otp);
+        } else if(employeeAccount != null && employeeAccount.getEmail() != null) {
+            emailService.sendNewPasswordEmail(employeeAccount.getEmail(), otp);
+        } else if(misStaffAccount != null && misStaffAccount.getEmail() != null) {
+            emailService.sendNewPasswordEmail(misStaffAccount.getEmail(), otp);
+        } else {
+            throw new MessagingException("No email associated with this user for password reset.");
+        }
+        userRepository.save(user);
+        return user;
     }
+
     @Override
     public User verifyOtpForgotPassword(User newUser) throws UsernameNotFoundException, PersonExistsException, OtpExistsException {
         validatePassword(newUser.getPassword());

@@ -1,5 +1,6 @@
 package com.rocs.ticketing.system.domain.student;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.rocs.ticketing.system.domain.person.Person;
 import com.rocs.ticketing.system.domain.user.User;
 import jakarta.persistence.Column;
@@ -14,11 +15,12 @@ import java.io.Serializable;
 @Data
 public class Students extends Person  implements Serializable {
 
-    private Long studentId;
-    @Column(length = 11)
+    @Column(length = 12, nullable = false)
     private String studentNumber;
 
     @OneToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @JsonIgnore
     private User user;
+
 }

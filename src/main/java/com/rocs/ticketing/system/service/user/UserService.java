@@ -1,5 +1,6 @@
 package com.rocs.ticketing.system.service.user;
 
+import com.rocs.ticketing.system.domain.register.Register;
 import com.rocs.ticketing.system.domain.user.User;
 import com.rocs.ticketing.system.exception.domain.*;
 import jakarta.mail.MessagingException;
@@ -10,10 +11,10 @@ public interface UserService {
     /**
      * Registers a new user
      *
-     * @param user the user containing details for registration
+     * @param register the user containing details for registration
      * @return the registered user
      */
-    User register(User user) throws UsernameNotFoundException, UsernameExistsException, EmailExistsException, MessagingException, PersonExistsException, UserNotFoundException;
+    Register register(Register register) throws org.springframework.security.core.userdetails.UsernameNotFoundException, UsernameExistsException, EmailExistsException, MessagingException, PersonExistsException, UserNotFoundException;
     /**
      * Handles password recovery
      *

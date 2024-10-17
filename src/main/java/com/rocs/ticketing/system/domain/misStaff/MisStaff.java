@@ -1,5 +1,6 @@
 package com.rocs.ticketing.system.domain.misStaff;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.rocs.ticketing.system.domain.person.Person;
 import com.rocs.ticketing.system.domain.user.User;
 import jakarta.persistence.*;
@@ -13,12 +14,11 @@ import java.util.Date;
 @Data
 public class MisStaff extends Person implements Serializable  {
 
-    private Long staffId;
     @Column(length = 10)
     private String misStaffNumber;
 
     @OneToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @JsonIgnore
     private User user;
-
 }

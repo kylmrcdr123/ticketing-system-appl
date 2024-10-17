@@ -49,4 +49,15 @@ public class EmployeeController {
         }
     }
 
+    @GetMapping("/employee/{userId}")
+    public ResponseEntity<Employees> getEmployeeByUserId(@PathVariable("userId") Long userId) {
+        Employees employee = employeeService.getEmployeeByUserId(userId);
+        if (employee != null) {
+            return new ResponseEntity<>(employee, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+
 }
