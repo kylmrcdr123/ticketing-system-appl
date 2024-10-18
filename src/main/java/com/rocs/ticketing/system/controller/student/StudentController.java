@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
-
 @RestController
 @RequestMapping("/StudentService")
 public class StudentController {
@@ -50,4 +48,13 @@ public class StudentController {
         }
     }
 
+    @GetMapping("/student/{userId}")
+    public ResponseEntity<Students> getStudentByUserId(@PathVariable("userId") String userId) {
+        Students student = studentService.getStudentByUserId(userId);
+        if (student != null) {
+            return new ResponseEntity<>(student, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 }

@@ -18,7 +18,6 @@ public interface TicketService {
  List<Ticket> getAllTicketByMisStaffNumber(String misStaffNumber);
  boolean assignTicket(Long ticketId, Long misStaffId);
  List<Ticket> getAllTicketsByMisStaffName(String name);
-
- List<Ticket> getAllTicketByStaffId(Long staffId);
-
+ List<Ticket> getTicketsByEmployeeNumber(String employeeNumber);
+ List<Ticket> getTicketsByStudentNumber(String studentNumber);
 }

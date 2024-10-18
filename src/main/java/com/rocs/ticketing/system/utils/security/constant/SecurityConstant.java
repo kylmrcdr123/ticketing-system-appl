@@ -42,6 +42,6 @@ public class SecurityConstant {
             "/user/verify-otp",
             "/user/forgot-password",
             "/user/verify-forgot-password",
-            "Guest/addGuest"
+            "EmployeeService/addEmployee"
     };
 }
