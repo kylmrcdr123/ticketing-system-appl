@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: ticketing-system-application
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521:rogate
+    username: system
+    password: Changeme0
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8080
+logging:
+  level:
+    org.springframework.security.web: info
+    root: info
+  file:
+    name: build/log/${spring.application.name}.log
+jwt:
+  secret: 'thebigbrownfoxjumpsoverthelazydog'
