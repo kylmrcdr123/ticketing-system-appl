@@ -22,12 +22,12 @@ public class Ticket implements Serializable {
     private Date dateFinished;
     @Column(length = 64)
     private String status;
-    @Column(length = 104)
+    @Column(length = 300)
     private String issue;
     private String reporter;
 
     @ManyToOne
-    @JoinColumn(name = "mis_staff_id")
+    @JoinColumn(name = "mis_staff_id", nullable = true) // Set nullable to true
     private MisStaff misStaff;
 
     @ManyToOne

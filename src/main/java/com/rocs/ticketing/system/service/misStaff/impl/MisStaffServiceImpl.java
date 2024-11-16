@@ -2,6 +2,7 @@ package com.rocs.ticketing.system.service.misStaff.impl;
 
 
 import com.rocs.ticketing.system.domain.misStaff.MisStaff;
+import com.rocs.ticketing.system.domain.student.Students;
 import com.rocs.ticketing.system.repository.misStaff.MisStaffRepository;
 import com.rocs.ticketing.system.service.misStaff.MisStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,6 @@ public class MisStaffServiceImpl implements MisStaffService {
         existingMisStaff.setEmail(misStaff.getEmail());
         existingMisStaff.setAddress(misStaff.getAddress());
         existingMisStaff.setContactNumber(misStaff.getContactNumber());
-        existingMisStaff.setDateCreated(misStaff.getDateCreated());  // Also update the dateCreated if needed
         existingMisStaff.setMisStaffNumber(misStaff.getMisStaffNumber());  // Also update the dateCreated if needed
 
         return misStaffRepository.save(existingMisStaff);
@@ -61,6 +61,11 @@ public class MisStaffServiceImpl implements MisStaffService {
     @Override
     public Optional<MisStaff> getMisStaffById(Long id) {
         return misStaffRepository.findById(id);
+    }
+
+    @Override
+    public MisStaff getMisStaffByUserId(String userId) {
+        return misStaffRepository.findByUserId(userId).orElse(null);
     }
 
 }

@@ -28,5 +28,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByStudent_StudentId(Long Id);
     List<Ticket> findByEmployee_EmployeeId(Long Id);
     List<Ticket> findByMisStaff_Id(Long Id);
-
+    List<Ticket> findByEmployee_EmployeeNumber(String employeeNumber);
+    List<Ticket> findByStudent_StudentNumber(String studentNumber);
 }

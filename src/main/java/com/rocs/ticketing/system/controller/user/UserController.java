@@ -103,13 +103,18 @@ public class UserController {
      * @return the logged-in user with JWT in headers
      */
     @PostMapping("/login")
-    public ResponseEntity<User> login(@RequestBody User user) throws UsernameNotFoundException{
+    public ResponseEntity<User> login(@RequestBody User user) throws UsernameNotFoundException {
         authenticate(user.getUsername(), user.getPassword());
         User loginUser = userService.findUserByUsername(user.getUsername());
         UserPrincipal userPrincipal = new UserPrincipal(loginUser);
-        HttpHeaders jwtHeaders = getJwtHeader(userPrincipal);
+
+        String token = jwtTokenProvider.generateJwtToken(userPrincipal);
+        HttpHeaders jwtHeaders = new HttpHeaders();
+        jwtHeaders.add("Authorization", "Bearer " + token); // Make sure "Authorization" is used here
+
         return new ResponseEntity<>(loginUser, jwtHeaders, HttpStatus.OK);
     }
+
     /**
      * Retrieves the list of all users.
      *

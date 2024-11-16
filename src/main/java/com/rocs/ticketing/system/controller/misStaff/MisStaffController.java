@@ -1,6 +1,7 @@
 package com.rocs.ticketing.system.controller.misStaff;
 
 import com.rocs.ticketing.system.domain.misStaff.MisStaff;
+import com.rocs.ticketing.system.domain.student.Students;
 import com.rocs.ticketing.system.service.misStaff.MisStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -54,6 +55,16 @@ public class MisStaffController {
     @GetMapping("/misStaff/{id}")
     public ResponseEntity<Optional<MisStaff>> getMisStaffById(@PathVariable Long id) {
         return new ResponseEntity<>(this.misStaffService.getMisStaffById(id), HttpStatus.OK);
+    }
+
+    @GetMapping("/misStaff/{userId}")
+    public ResponseEntity<MisStaff> getMisStaffByUserId(@PathVariable("userId") String userId) {
+        MisStaff misStaff = misStaffService.getMisStaffByUserId(userId);
+        if (misStaff != null) {
+            return new ResponseEntity<>(misStaff, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
 }

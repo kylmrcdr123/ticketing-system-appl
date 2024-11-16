@@ -23,7 +23,7 @@ public class EmailConstant {
     /**
      * Subject line for the welcome email sent to users.
      */
-    public static final String EMAIL_SUBJECT = "Welcome to Rogationist Computing Society: Your New Password";
+    public static final String EMAIL_SUBJECT = "Welcome to Rogationist Computing Society: Your OTP";
     /**
      * SMTP server address for Gmail.
      */

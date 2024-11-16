@@ -21,4 +21,6 @@ public class Students extends Person  implements Serializable {
     @OneToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+
 }

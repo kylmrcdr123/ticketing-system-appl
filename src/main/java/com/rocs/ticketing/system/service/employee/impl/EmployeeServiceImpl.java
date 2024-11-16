@@ -1,12 +1,14 @@
 package com.rocs.ticketing.system.service.employee.impl;
 
 import com.rocs.ticketing.system.domain.employees.Employees;
+import com.rocs.ticketing.system.domain.student.Students;
 import com.rocs.ticketing.system.repository.employee.EmployeeRepository;
 import com.rocs.ticketing.system.service.employee.EmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -33,25 +35,37 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public Employees updateEmployee(Long id, Employees employee) {
-        if (employee == null || id == null) {
+    public Employees updateEmployee(String userId, Employees employee) {
+        if (employee == null || userId == null) {
             throw new IllegalArgumentException("Employee or ID cannot be null");
         }
 
-        Employees existingEmployee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
+        Employees existingEmployee = employeeRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Employee not found with user ID: " + userId));
 
-        // Update fields with new data
+        // Update the employee details
         existingEmployee.setFirstName(employee.getFirstName());
         existingEmployee.setMiddleName(employee.getMiddleName());
         existingEmployee.setLastName(employee.getLastName());
         existingEmployee.setEmail(employee.getEmail());
         existingEmployee.setAddress(employee.getAddress());
         existingEmployee.setContactNumber(employee.getContactNumber());
-        existingEmployee.setDateCreated(employee.getDateCreated());  // Update dateCreated if needed
 
         return employeeRepository.save(existingEmployee);
     }
 
+    @Override
+    public Employees getEmployeeByUserId(String userId) {
+        return employeeRepository.findByUserId(userId).orElse(null);
+    }
 
+    @Override
+    public Optional<Employees> findById(Long id) {
+        return employeeRepository.findById(id);
+    }
+
+    @Override
+    public Optional<Employees> findByEmployeeNumberOptional(String employeeNumber) {
+        return employeeRepository.findOptionalByEmployeeNumber(employeeNumber); // Use renamed method
+    }
 }

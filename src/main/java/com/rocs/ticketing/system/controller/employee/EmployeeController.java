@@ -35,10 +35,10 @@ public class EmployeeController {
         }
     }
 
-    @PutMapping("/employee/update/{employeeId}")
-    public ResponseEntity<String> updateEmployee(@PathVariable("employeeId") Long id, @RequestBody Employees employee) {
+    @PutMapping("/employee/update/{userId}")
+    public ResponseEntity<String> updateEmployee(@PathVariable("userId") String userId, @RequestBody Employees employee) {
         try {
-            Employees updatedEmployee = employeeService.updateEmployee(id, employee);
+            Employees updatedEmployee = employeeService.updateEmployee(userId, employee);
             if (updatedEmployee != null) {
                 return new ResponseEntity<>("Employee successfully updated", HttpStatus.OK);
             } else {
@@ -48,5 +48,17 @@ public class EmployeeController {
             return new ResponseEntity<>("Update failed: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
+    @GetMapping("/employee/{userId}")
+    public ResponseEntity<Employees> getEmployeeByUserId(@PathVariable("userId") String userId) {
+        Employees employee = employeeService.getEmployeeByUserId(userId);
+        if (employee != null) {
+            return new ResponseEntity<>(employee, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
 
 }

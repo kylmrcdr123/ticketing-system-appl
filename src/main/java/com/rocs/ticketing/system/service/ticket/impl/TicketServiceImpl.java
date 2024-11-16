@@ -48,134 +48,75 @@ public class TicketServiceImpl implements TicketService {
         return ticketRepository.findById(id);
     }
 
-    @Override
-    public void updateStatus(Long ticketId, String status) {
-        // Fetch the ticket from the repository
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found with id " + ticketId));
-
-        // Update the status of the ticket
-        ticket.setStatus(status);
-
-        // If the status is "Done" or "Closed", update the dateFinished field
-        if ("Done".equalsIgnoreCase(status) || "Closed".equalsIgnoreCase(status)) {
-            ticket.setDateFinished(new Date());  // Set the current date as dateFinished
-        } else {
-            ticket.setDateFinished(null);  // Reset the dateFinished if the status is not "Done" or "Closed"
-        }
-
-        // Save the updated ticket back to the repository
-        ticketRepository.save(ticket);
-
-        // Log the status update
-        System.out.println("Ticket ID " + ticketId + " updated with status: " + status +
-                (ticket.getDateFinished() != null ? ", Date Finished: " + ticket.getDateFinished() : ""));
-    }
 
     @Override
     public Ticket addTicket(Ticket ticket) {
-        // Ensure the MIS Staff exists and is set
-        MisStaff misStaff = misStaffRepository.findById(ticket.getMisStaff().getId())
-                .orElseThrow(() -> new RuntimeException("MIS Staff not found with ID: " + ticket.getMisStaff().getId()));
-
-        ticket.setMisStaff(misStaff);  // Set the fetched MisStaff in the Ticket
-
         // Check if either employee or student is provided
         if (ticket.getEmployee() != null) {
             Employees employee = employeeRepository.findById(ticket.getEmployee().getId())
                     .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + ticket.getEmployee().getId()));
             ticket.setEmployee(employee);  // Set the fetched Employee in the Ticket
+            // Set reporter information
+            ticket.setReporter("Employee"); // Set reporter as employee
         } else if (ticket.getStudent() != null) {
             Students student = studentRepository.findById(ticket.getStudent().getId())
                     .orElseThrow(() -> new RuntimeException("Student not found with ID: " + ticket.getStudent().getId()));
             ticket.setStudent(student);  // Set the fetched Student in the Ticket
+            // Set reporter information
+            ticket.setReporter("Student"); // Set reporter as student
         } else {
             throw new RuntimeException("Either Employee or Student must be provided.");
         }
 
+        // If misStaff is not provided, set it to null
+        ticket.setMisStaff(null); // Explicitly set MIS staff to null
+
         return ticketRepository.save(ticket);  // Save the ticket
     }
 
-
     @Override
     public Ticket updateTicket(Ticket ticket) {
-        Optional<Ticket> existingTicketOptional = ticketRepository.findById(ticket.getTicketId());
+        Optional<Ticket> existingTicket = ticketRepository.findById(ticket.getTicketId());
+        if (existingTicket.isPresent()) {
+            // Get the existing ticket
+            Ticket ticketToUpdate = existingTicket.get();
 
-        if (existingTicketOptional.isPresent()) {
-            Ticket existingTicket = existingTicketOptional.get();
-
-            // Log the incoming ticket details
-            System.out.println("Incoming Ticket: " + ticket);
-
-            // If misStaff is present, find and set the MisStaff object
-            if (ticket.getMisStaff() != null && ticket.getMisStaff().getStaffId() != null) {
-                Optional<MisStaff> misStaffOptional = misStaffRepository.findById(ticket.getMisStaff().getStaffId());
-                if (misStaffOptional.isPresent()) {
-                    existingTicket.setMisStaff(misStaffOptional.get());
-                } else {
-                    throw new RuntimeException("MisStaff with ID " + ticket.getMisStaff().getStaffId() + " not found");
+            // Update the status if provided
+            if (ticket.getStatus() != null) {
+                // If the status is 'Done' or 'Closed', set the dateFinished field
+                if ("Done".equals(ticket.getStatus()) || "Closed".equals(ticket.getStatus())) {
+                    // Set the current date and time as the dateFinished
+                    ticketToUpdate.setDateFinished(new Date());  // Using Date to represent the current date/time
                 }
+                ticketToUpdate.setStatus(ticket.getStatus());
             }
 
-            existingTicket.setDateCreated(ticket.getDateCreated());
-            existingTicket.setDateFinished(ticket.getDateFinished());
-            existingTicket.setIssue(ticket.getIssue());
-            existingTicket.setStatus(ticket.getStatus());
-            existingTicket.setTicketNumber(ticket.getTicketNumber());
+            // Optionally update the issue if provided
+            if (ticket.getIssue() != null) {
+                ticketToUpdate.setIssue(ticket.getIssue());
+            }
 
-            // Save the existing ticket with the updated misStaff
-            return ticketRepository.save(existingTicket);
-        } else {
-            throw new RuntimeException("Ticket with ID " + ticket.getTicketId() + " not found");
+            // Optionally update the student if provided
+            if (ticket.getStudent() != null) {
+                ticketToUpdate.setStudent(ticket.getStudent());
+            }
+
+            // Optionally update the employee (assignee) if provided
+            if (ticket.getEmployee() != null) {
+                ticketToUpdate.setEmployee(ticket.getEmployee());
+            }
+
+            // Update the MIS staff if provided
+            if (ticket.getMisStaff() != null && ticket.getMisStaff().getId() != null) {
+                ticketToUpdate.setMisStaff(ticket.getMisStaff());
+            }
+
+            // You can add similar checks for other fields if necessary
+
+            // Save and return the updated ticket
+            return ticketRepository.save(ticketToUpdate);
         }
-    }
-
-
-    @Override
-    public void assignTicket(Long ticketId, Long employeeId, Long studentId) {
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found with id " + ticketId));
-
-        if (employeeId != null) {
-            Employees employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Employee not found with id " + employeeId));
-            ticket.setEmployee(employee);
-            ticket.setStudent(null); // Clear other assignments
-            ticket.setMisStaff(null); // Clear other assignments
-        } else if (studentId != null) {
-            Students student = studentRepository.findById(studentId)
-                    .orElseThrow(() -> new RuntimeException("Student not found with id " + studentId));
-            ticket.setStudent(student);
-            ticket.setEmployee(null); // Clear other assignments
-            ticket.setMisStaff(null); // Clear other assignments
-        }
-
-        // Log the assignment
-        System.out.println("Ticket assigned to: " +
-                (employeeId != null ? "Employee " + employeeId : "Student " + studentId));
-
-        // Save the ticket
-        ticketRepository.save(ticket);
-    }
-
-    @Override
-    public void reassignTicket(Long ticketId, Long newMisStaffId) {
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket not found with id " + ticketId));
-
-        MisStaff misStaff = misStaffRepository.findById(newMisStaffId)
-                .orElseThrow(() -> new RuntimeException("MIS Staff not found with id " + newMisStaffId));
-
-        // Clear other assignments
-        ticket.setMisStaff(misStaff);
-        ticket.setEmployee(null);  // Clear employee if present
-        ticket.setStudent(null);   // Clear student if present
-
-        // Log the reassignment
-        System.out.println("Ticket reassigned to MIS Staff " + newMisStaffId);
-
-        // Save the updated ticket
-        ticketRepository.save(ticket);
+        return null; // Ticket not found
     }
 
     @Override
@@ -208,15 +149,15 @@ public class TicketServiceImpl implements TicketService {
         return false;  // Either ticket or MIS staff not found
     }
 
+
+    // TicketServiceImpl.java
     @Override
-    public List<Ticket> getAllTicketByStaffId(Long staffId) {
-        return ticketRepository.findByMisStaff_StaffId(staffId);
+    public List<Ticket> getTicketsByEmployeeNumber(String employeeNumber) {
+        return ticketRepository.findByEmployee_EmployeeNumber(employeeNumber);
     }
 
     @Override
-    public List<Ticket> getAllTicketsByMisStaffName(String name) {
-        return ticketRepository.findByMisStaffFirstNameContainingIgnoreCaseOrMisStaffMiddleNameContainingIgnoreCaseOrMisStaffLastNameContainingIgnoreCase(name, name, name);
+    public List<Ticket> getTicketsByStudentNumber(String studentNumber)  {
+        return ticketRepository.findByStudent_StudentNumber(studentNumber);
     }
-
-
 }

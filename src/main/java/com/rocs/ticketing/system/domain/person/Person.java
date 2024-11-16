@@ -33,5 +33,4 @@ public class Person {
     @Column(length = 11)
     private String contactNumber;
 
-    private Date dateCreated;
 }
